@@ -1,16 +1,6 @@
 ; Autor: Gabriel Vargas Rodríguez - 2018103129
 ; Arquitectura de Computadores - Grupo 2
 
-
-
-
-; -------- Manual de usuario ----------
-
-
-; -------- Análisis de resultados ---------
-
-
-
 datos segment
 
    db dup (?)
