@@ -1,9 +1,11 @@
 ; Autor: Gabriel Vargas Rodríguez - 2018103129
 ; Arquitectura de Computadores - Grupo 2
 
+include macros.asm
+
 datos segment
 
-   db dup (?)
+   abc db "Hello$"
 
 datos ends
 
@@ -29,10 +31,21 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
         mov ax, pila
         mov ss, ax
 
-        ;carnita
+        opcion_juego:
+        mov si, 82h
+        cmp byte ptr es:[si], 'j'
+        conejo je final
+
+        opcion_editor:
+        mov si, 82h
+        cmp byte ptr es:[si], 'e'
+        conejo je final
+
+        opcion_acerca:
 
 
 final:
+        println abc
         mov ax, 4C00h ; para finalizacion en 21h
         int 21h ; termina programa
 
