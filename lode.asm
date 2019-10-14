@@ -5,6 +5,18 @@ include macros.asm
 
 datos segment
 
+    acercaDe1 db "LODE RUNNER - Autor: Gabriel Vargas Rodriguez - 2018103129", 0
+    acercaDe2 db "Arquitectura de Computadores - Grupo 2", 0
+    acercaDe3 db "Controles: ", 0
+    acercaDe4 db "- Movimiento con flechas", 0
+    acercaDe5 db "- Z y X para hacer agujeros", 0
+    acercaDe6 db "- P para pausa", 0
+    acercaDe7 db "Objetivo: conseguir todos los tesoros y subir al siguiente nivel", 0
+    acercaDe8 db "Opciones (18103129 #):", 0
+    acercaDe9 db "  j: modo juego", 0
+    acercaDe10 db "  e: modo editor", 0
+    acercaDe11 db "  h: modo acerca de", 0
+
     ds_highscore db "Highscores", 0
     ds_highscore2 db "NOM LVL  SCORE", 0
     highscore1 db " 1 ___ ___ 00000000", 0Ah, 0Dh
@@ -41,8 +53,6 @@ datos segment
 datos ends
 
 azul EQU 00010001b
-celeste EQU 00110011b
-letra EQU 00000111b
 escalera EQU 0000011101001000b; fondo negro, char blanco, H
 ladrillo EQU 0011100000101011b;fondo celeste, char gris, +
 cemento EQU 0011000101000011b; fondo y char celeste, C
@@ -88,7 +98,13 @@ print endP
 
 pintaNivel proc far
     ; rutina para abrir el archivo del nivel y desplegarlo en pantalla
-    ; espera el nombre del archivo en la variable archivo_nivel
+    ; espera el nombre del archivo en la variable archivoNivel
+    ; regresa un 2 en el ax si el nivel del archivo no existe
+    push bx
+    push cx
+    push dx
+    push di
+    push si
 
     ; ************************** Abre archivo de nivel *************************
     mov ah, 3Dh; para abrir con int 21h
@@ -99,12 +115,7 @@ pintaNivel proc far
     mov handleNivel, ax; para guardar el handle
     jmp leeArchivoNivel
     errorAbrir:
-    mov dx, ax
-    xor al, al
-    mov ah, 02
-    add dx, 30h; regresa número de error
-    int 21h
-    jmp final
+    jmp finPintaNivel
 
     ; *************************** Lee archivo de nivel *************************
     leeArchivoNivel:
@@ -126,6 +137,11 @@ pintaNivel proc far
     lea dx, buffyNivel
     int 21h
     conejo jc,finPintaNivel
+
+    ; *************************** Cierra archivo nivel *************************
+    mov ax, 3E00h
+    mov bx, handleNivel
+    int 21h
 
     ; *************************** Pinta Nivel *************************
     mov si, 410; primera posición del cuadro de juego
@@ -201,9 +217,27 @@ pintaNivel proc far
 
 
 
+
     finPintaNivel:
+    pop si
+    pop di
+    pop dx
+    pop cx
+    pop bx
     ret
 pintaNivel endP
+
+pintaHS proc far
+
+
+
+
+
+
+    ret
+pintaHS endP
+
+
 
 
 inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un mov entre dos segmentos
@@ -225,19 +259,66 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
         conejo je modo_editor
 
         opcion_acerca:
-        ;println ds_highscore
-        jmp final
+            mov ax, 0B800h; comienzo de memoria gráfica
+            mov es, ax
+            mov ah, 00000100b; fondo negro letra roja
 
+            lea bx, acercaDe1
+            mov si, 818
+            call print
+
+            lea bx, acercaDe2
+            mov si, 978
+            call print
+
+            lea bx, acercaDe3
+            mov si, 1298
+            call print
+
+            lea bx, acercaDe4
+            mov si, 1458
+            call print
+
+            lea bx, acercaDe5
+            mov si, 1618
+            call print
+
+            lea bx, acercaDe6
+            mov si, 1778
+            call print
+
+            lea bx, acercaDe7
+            mov si, 2098
+            call print
+
+            lea bx, acercaDe8
+            mov si, 2418
+            call print
+
+            lea bx, acercaDe9
+            mov si, 2578
+            call print
+
+            lea bx, acercaDe10
+            mov si, 2738
+            call print
+
+            lea bx, acercaDe11
+            mov si, 2898
+            call print
+
+            jmp final
 
         modo_juego:
-        mov ax, 0B800h; comienzo de memoria gráfica
-            pinta_cuadrado:
+            mov ax, 0B800h; comienzo de memoria gráfica
+            pinta_nivel:
                 mov es, ax
                 xor si, si
                 mov al, '*'
                 lineaH azul,28,16,4,9; imprime dos filas horizontales de 28 caracteres separadas por 16 filas a partir de 5ta fila, 10ma columna
                 xor si, si
                 lineaV azul,16,27,5,9; imprime 16 filas separadas por 26 columnas a partir de 6ta fila, 10ma columna
+                call pintaNivel
 
             pinta_highscore:
                 xor si, si
@@ -257,7 +338,7 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                 mov ah, 00000111b
                 call print
 
-                call pintaNivel
+
 
 
 
