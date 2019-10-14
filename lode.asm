@@ -17,35 +17,36 @@ datos segment
     acercaDe10 db "  e: modo editor", 0
     acercaDe11 db "  h: modo acerca de", 0
 
-    ds_highscore db "Highscores", 0
-    ds_highscore2 db "NOM LVL  SCORE", 0
-    highscore1 db " 1 ___ ___ 00000000", 0Ah, 0Dh
-    highscore2 db " 2 ___ ___ 00000000", 0Ah, 0Dh
-    highscore3 db " 3 ___ ___ 00000000", 0Ah, 0Dh
-    highscore4 db " 4 ___ ___ 00000000", 0Ah, 0Dh
-    highscore5 db " 5 ___ ___ 00000000", 0Ah, 0Dh
-    highscore6 db " 6 ___ ___ 00000000", 0Ah, 0Dh
-    highscore7 db " 7 ___ ___ 00000000", 0Ah, 0Dh
-    highscore8 db " 8 ___ ___ 00000000", 0Ah, 0Dh
-    highscore9 db " 9 ___ ___ 00000000", 0Ah, 0Dh
-    highscore10 db "10 ___ ___ 00000000", 0Ah, 0Dh
-    highscore11 db "11 ___ ___ 00000000", 0Ah, 0Dh
-    highscore12 db "12 ___ ___ 00000000", 0Ah, 0Dh
-    highscore13 db "13 ___ ___ 00000000", 0Ah, 0Dh
-    highscore14 db "14 ___ ___ 00000000", 0Ah, 0Dh
-    highscore15 db "15 ___ ___ 00000000", 0Ah, 0Dh
-    highscore16 db "16 ___ ___ 00000000", 0Ah, 0Dh
-    highscore17 db "17 ___ ___ 00000000", 0Ah, 0Dh
-    highscore18 db "18 ___ ___ 00000000", 0Ah, 0Dh
-    highscore19 db "19 ___ ___ 00000000", 0Ah, 0Dh
-    highscore20 db "20 ___ ___ 00000000"
-    archivoHS db "hscores.txt", 0
-    hancleHS dw (?)
-
     archivoNivel db "original\orig021.txt", 0
     tamArchivoNivel dw (?)
     handleNivel dw (?)
-    buffyNivel db 450 dup (?), '$'
+    buffyNivel db 450 dup (?)
+
+
+    archivoHS db "hscores.txt", 0
+    hancleHS dw (?)
+    ds_highscore db "Highscores", 0
+    ds_highscore2 db "NOM LVL  SCORE", 0
+    buffyHS db " 1 ___ ___ 00000000", 0Ah, 0Dh
+     db " 2 ___ ___ 00000000", 0Ah, 0Dh
+     db " 3 ___ ___ 00000000", 0Ah, 0Dh
+     db " 4 ___ ___ 00000000", 0Ah, 0Dh
+     db " 5 ___ ___ 00000000", 0Ah, 0Dh
+     db " 6 ___ ___ 00000000", 0Ah, 0Dh
+     db " 7 ___ ___ 00000000", 0Ah, 0Dh
+     db " 8 ___ ___ 00000000", 0Ah, 0Dh
+     db " 9 ___ ___ 00000000", 0Ah, 0Dh
+     db "10 ___ ___ 00000000", 0Ah, 0Dh
+     db "11 ___ ___ 00000000", 0Ah, 0Dh
+     db "12 ___ ___ 00000000", 0Ah, 0Dh
+     db "13 ___ ___ 00000000", 0Ah, 0Dh
+     db "14 ___ ___ 00000000", 0Ah, 0Dh
+     db "15 ___ ___ 00000000", 0Ah, 0Dh
+     db "16 ___ ___ 00000000", 0Ah, 0Dh
+     db "17 ___ ___ 00000000", 0Ah, 0Dh
+     db "18 ___ ___ 00000000", 0Ah, 0Dh
+     db "19 ___ ___ 00000000", 0Ah, 0Dh
+     db "20 ___ ___ 00000000"
 
 
 
@@ -228,12 +229,42 @@ pintaNivel proc far
 pintaNivel endP
 
 pintaHS proc far
+    ; rutina para imprimir el highscore
+    push ax
+    push bx
+    push cx
+    push di
+    push si
 
+    ; ****************** Pinta Highscores a partir del buffer ******************
+    mov ah, 00000111b; fondo negro, letra blanca
+    lea bx, buffyHS
+    mov si, 738; comienzo de área de highscore
+    xor di, di
 
+    mov dx, 20
+    loopHS:
+        mov cx, 19
+        loopLineaHS:
+            mov al, byte ptr [bx + di]
+            mov es:[si], ax
+            inc si
+            inc si
+            inc di
+        loop loopLineaHS
+        inc di
+        inc di; salta enter
+        add si, 122; siguiente línea del área de highscore
+        dec dx
+        cmp dx, 0
+    jne loopHS
 
-
-
-
+    finPintaHS:
+    pop si
+    pop di
+    pop cx
+    pop bx
+    pop ax
     ret
 pintaHS endP
 
@@ -322,9 +353,9 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
 
             pinta_highscore:
                 xor si, si
-                lineaH azul,25,22,1,48; imprime dos filas horizontales de 25 caracteres separadas por 16 filas a partir de 5ta fila, columna 49
+                lineaH azul,22,22,1,48; imprime dos filas horizontales de 22 caracteres separadas por 16 filas a partir de 5ta fila, columna 49
                 xor si, si
-                lineaV azul,22,24,2,48; imprime 16 filas separadas por 23 columnas a partir de 6ta fila, columna 49
+                lineaV azul,22,21,2,48; imprime 16 filas separadas por 23 columnas a partir de 6ta fila, columna 49
 
                 lea bx, ds_highscore
                 mov si, 136
@@ -333,10 +364,11 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                 call print
 
                 lea bx, ds_highscore2
-                mov si, 213
+                mov si, 212
                 shl si, 1
                 mov ah, 00000111b
                 call print
+                call pintaHS
 
 
 
