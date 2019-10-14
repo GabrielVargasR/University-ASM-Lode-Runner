@@ -66,13 +66,6 @@ cerrar_archivo Macro handle
 endM
 
 
-println Macro var
-    lea dx, var
-    mov ah, 09h
-    int 21h
-endM
-
-
 lineaH Macro color,N1,N2,F,C
     local linea1
     local linea2
@@ -121,4 +114,7 @@ lineaV Macro color,N1,N2,F,C
         shl bx, 1; calcula comienzo de siguiente posición (fila y columna)
         add si, bx; brinca a la siguiente fila
     loop linea
+endM
+
+print_highscores Macro
 endM
