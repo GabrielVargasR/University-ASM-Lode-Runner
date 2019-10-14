@@ -8,21 +8,6 @@ conejo Macro salto,etiqueta
     et2:
 endM
 
-abrir_archivo Macro nombre,modo,handle,final
-    local error_abrir
-    local fin_abrir
-    mov ah, 3Dh; para abrir con int 21h
-    mov al, modo; para modo de apertura
-    lea dx, nombre
-    int 21h
-    jc error_abrir
-    mov handle, ax; para guardar el handle
-    jmp fin_abrir
-    error_abrir:
-    println dsmal_archivo
-    jmp final
-    fin_abrir:
-endM
 
 
 getTamanoArchivo Macro handle,vart

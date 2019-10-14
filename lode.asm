@@ -30,8 +30,11 @@ datos segment
     archivoHS db "hscores.txt", 0
     hancleHS dw (?)
 
-    archivo_nivel db "original\orig021.txt", 0
-    handle_nivel dw (?)
+    archivoNivel db "original\orig021.txt", 0
+    tamArchivoNivel dw (?)
+    handleNivel dw (?)
+    buffyNivel db 450 dup (?), '$'
+
 
 
 
@@ -39,13 +42,14 @@ datos ends
 
 azul EQU 00010001b
 celeste EQU 00110011b
+letra EQU 00000111b
 escalera EQU 0000011101001000b; fondo negro, char blanco, H
 ladrillo EQU 0011100000101011b;fondo celeste, char gris, +
 cemento EQU 0011000101000011b; fondo y char celeste, C
 ladrilloF EQU 0011100000101101b;fondo celeste, char gris, -
 espacio EQU 0000000000100000b; fondo y char negro, 32d
-tesoro EQU 0110000001001111b; fondo amarillo, char negro, O
-enemigo EQU 0000010001010100b; fondo negro, char rojo, X
+tesoro EQU 0110000001010100b; fondo amarillo, char negro, T
+enemigo EQU 0000010001011000b; fondo negro, char rojo, X
 personaje EQU 0000010101000000b; fondo negro, char cyan, @
 cuerda EQU 0000011101111110b; fondo negro, char blanco, ~
 
@@ -82,27 +86,124 @@ print proc far
     ret
 print endP
 
-pinta_nivel proc far
+pintaNivel proc far
     ; rutina para abrir el archivo del nivel y desplegarlo en pantalla
     ; espera el nombre del archivo en la variable archivo_nivel
 
+    ; ************************** Abre archivo de nivel *************************
     mov ah, 3Dh; para abrir con int 21h
     mov al, 0; para modo de lectura
-    lea dx, archivo_nivel
+    lea dx, archivoNivel
     int 21h
-    jc error_abrir
-    mov handle_nivel, ax; para guardar el handle
-    jmp fin_abrir
-    error_abrir:
+    jc errorAbrir
+    mov handleNivel, ax; para guardar el handle
+    jmp leeArchivoNivel
+    errorAbrir:
     mov dx, ax
     xor al, al
     mov ah, 02
-    add dx, 30h
+    add dx, 30h; regresa número de error
     int 21h
     jmp final
-    fin_abrir:
+
+    ; *************************** Lee archivo de nivel *************************
+    leeArchivoNivel:
+    xor cx, cx
+    xor dx, dx; para hacer desplazamiento de 0
+    mov ah, 42h; para mover file pointer
+    mov al, 02; mueve file pointer desde el final del archivo
+    mov bx, handleNivel
+    int 21h
+    mov tamArchivoNivel, ax; operación retorna tamaño en DX:AX
+
+    mov ax, 4200h
+    xor dx, dx
+    int 21h ; regresa el file pointer al principio
+
+    mov ax, 3F00h; para leer archivo con 21h
+    mov bx, handleNivel
+    mov cx, tamArchivoNivel
+    lea dx, buffyNivel
+    int 21h
+    conejo jc,finPintaNivel
+
+    ; *************************** Pinta Nivel *************************
+    mov si, 410; primera posición del cuadro de juego
+    shl si, 1
+    xor di, di
+    lea bx, buffyNivel
+    mov dx, 16
+    loopNivel:
+        mov cx, 26
+        loopLinea:
+            cmp byte ptr [bx+di], ' '
+            je pintaNada
+            cmp byte ptr [bx+di], 'L'
+            je pintaLadrillo
+            cmp byte ptr [bx+di], 'C'
+            je pintaCemento
+            cmp byte ptr [bx+di], 'E'
+            je pintaEscalera
+            cmp byte ptr [bx+di], 'F'
+            je pintaFalso
+            cmp byte ptr [bx+di], 'S'
+            je pintaCuerda
+            cmp byte ptr [bx+di], 'O'
+            je pintaTesoro
+            cmp byte ptr [bx+di], 'G'
+            je guardaEscalera
+            cmp byte ptr [bx+di], 'X'
+            je pintaEnemigo
+            cmp byte ptr [bx+di], '*'
+            je pintaPersonaje
+            ; Si no reconoce un character, pinta espacios en blanco
+            pintaNada:
+            mov ax, espacio
+            jmp pintaChar
+            pintaLadrillo:
+            mov ax, ladrillo
+            jmp pintaChar
+            pintaCemento:
+            mov ax, cemento
+            jmp pintaChar
+            pintaEscalera:
+            mov ax, escalera
+            jmp pintaChar
+            pintaFalso:
+            mov ax, ladrilloF
+            jmp pintaChar
+            pintaCuerda:
+            mov ax, cuerda
+            jmp pintaChar
+            pintaTesoro:
+            mov ax, tesoro
+            jmp pintaChar
+            guardaEscalera:
+            mov ax, escalera
+            jmp pintaChar
+            pintaEnemigo:
+            mov ax, enemigo
+            jmp pintaChar
+            pintaPersonaje:
+            mov ax, personaje
+
+            pintaChar:
+            mov word ptr es:[si], ax
+            inc di
+            inc si
+            inc si
+            loop loopLinea
+        add si, 108; apunta a siguiente línea
+        inc di
+        dec dx
+        cmp dx, 0
+        jne loopNivel
+
+
+
+    finPintaNivel:
     ret
-pinta_nivel endP
+pintaNivel endP
 
 
 inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un mov entre dos segmentos
@@ -156,7 +257,7 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                 mov ah, 00000111b
                 call print
 
-                call pinta_nivel
+                call pintaNivel
 
 
 
