@@ -17,7 +17,7 @@ datos segment
     acercaDe10 db "  e: modo editor", 0
     acercaDe11 db "  h: modo acerca de", 0
 
-    archivoNivel db "original\orig021.txt", 0
+    archivoNivel db "original\orig146.txt", 0
     tamArchivoNivel dw (?)
     handleNivel dw (?)
     buffyNivel db 450 dup (?)
@@ -56,7 +56,7 @@ datos ends
 azul EQU 00010001b
 escalera EQU 0000011101001000b; fondo negro, char blanco, H
 ladrillo EQU 0011100000101011b;fondo celeste, char gris, +
-cemento EQU 0011000101000011b; fondo y char celeste, C
+cemento EQU 0011001101000011b; fondo y char celeste, C
 ladrilloF EQU 0011100000101101b;fondo celeste, char gris, -
 espacio EQU 0000000000100000b; fondo y char negro, 32d
 tesoro EQU 0110000001010100b; fondo amarillo, char negro, T

@@ -1,16 +1,16 @@
- O
-LLLLE           X
-  O E         ELLLLLLE  O
+zO                       z
+LLLLE           X        z
+z O E         ELLLLLLE  Oz
 LLLLLLLELLLLLLE     LLLLLL
-       E      E O       O
-     O E      ELLLLLLLLLLL
-LELLLLLE   O  E
- E   O ECCCCCCE      O
+z      E      E O       Oz
+z    O E      ELLLLLLLLLLL
+LELLLLLE   O  E          z
+zE   O ECCCCCCE      O   z
 LELLLLLE      LLLLLELLLLLE
-       E X    O    E
- O     ELLLELLLLLLLCCCCCCC
-LLLELLLL   E  O      O X
-   E      ELLLLLLLLELLLLLL
-   ESSSSSSE        E
-   E               E    O 
+z      E X    O    E     z
+zO     ELLLELLLLLLLCCCCCCC
+LLLELLLL   E  O      O X z
+z  E      ELLLLLLLLELLLLLL
+z  ESSSSSSE        E     z
+*  E               E    Oz
 LLLLLLLLLLLLLLLLLLLLLL LLL
