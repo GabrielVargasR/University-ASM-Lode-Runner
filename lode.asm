@@ -24,29 +24,32 @@ datos segment
 
 
     archivoHS db "hscores.txt", 0
-    hancleHS dw (?)
+    handleHS dw (?)
     ds_highscore db "Highscores", 0
     ds_highscore2 db "NOM LVL  SCORE", 0
-    buffyHS db " 1 ___ ___ 00000000", 0Ah, 0Dh
-     db " 2 ___ ___ 00000000", 0Ah, 0Dh
-     db " 3 ___ ___ 00000000", 0Ah, 0Dh
-     db " 4 ___ ___ 00000000", 0Ah, 0Dh
-     db " 5 ___ ___ 00000000", 0Ah, 0Dh
-     db " 6 ___ ___ 00000000", 0Ah, 0Dh
-     db " 7 ___ ___ 00000000", 0Ah, 0Dh
-     db " 8 ___ ___ 00000000", 0Ah, 0Dh
-     db " 9 ___ ___ 00000000", 0Ah, 0Dh
-     db "10 ___ ___ 00000000", 0Ah, 0Dh
-     db "11 ___ ___ 00000000", 0Ah, 0Dh
-     db "12 ___ ___ 00000000", 0Ah, 0Dh
-     db "13 ___ ___ 00000000", 0Ah, 0Dh
-     db "14 ___ ___ 00000000", 0Ah, 0Dh
-     db "15 ___ ___ 00000000", 0Ah, 0Dh
-     db "16 ___ ___ 00000000", 0Ah, 0Dh
-     db "17 ___ ___ 00000000", 0Ah, 0Dh
-     db "18 ___ ___ 00000000", 0Ah, 0Dh
-     db "19 ___ ___ 00000000", 0Ah, 0Dh
+    buffyHS db " 1 ___ ___ 00000000", 0Ah
+     db " 2 ___ ___ 00000000", 0Ah
+     db " 3 ___ ___ 00000000", 0Ah
+     db " 4 ___ ___ 00000000", 0Ah
+     db " 5 ___ ___ 00000000", 0Ah
+     db " 6 ___ ___ 00000000", 0Ah
+     db " 7 ___ ___ 00000000", 0Ah
+     db " 8 ___ ___ 00000000", 0Ah
+     db " 9 ___ ___ 00000000", 0Ah
+     db "10 ___ ___ 00000000", 0Ah
+     db "11 ___ ___ 00000000", 0Ah
+     db "12 ___ ___ 00000000", 0Ah
+     db "13 ___ ___ 00000000", 0Ah
+     db "14 ___ ___ 00000000", 0Ah
+     db "15 ___ ___ 00000000", 0Ah
+     db "16 ___ ___ 00000000", 0Ah
+     db "17 ___ ___ 00000000", 0Ah
+     db "18 ___ ___ 00000000", 0Ah
+     db "19 ___ ___ 00000000", 0Ah
      db "20 ___ ___ 00000000"
+
+     tiempoPJ1 db 1000
+     tiempoPJ2 db 100
 
 
 
@@ -63,6 +66,10 @@ tesoro EQU 0110000001010100b; fondo amarillo, char negro, T
 enemigo EQU 0000010001011000b; fondo negro, char rojo, X
 personaje EQU 0000010101000000b; fondo negro, char cyan, @
 cuerda EQU 0000011101111110b; fondo negro, char blanco, ~
+
+puntosNivel EQU 1500
+puntosTesoro EQU 250
+puntosTrap EQU 75 ; tanto encerrar como respawn
 
 pila segment stack 'stack'
 
@@ -233,10 +240,51 @@ pintaHS proc far
     push ax
     push bx
     push cx
+    push dx
     push di
     push si
 
+    ; ********************* Maneja Archivo de Highscores ***********************
+    mov ah, 3Dh; para abrir con int 21h
+    mov al, 0; para modo de lectura
+    lea dx, archivoHS
+    int 21h
+    jc creaFileHS
+    mov handleHS, ax; para guardar el handle
+    jmp leeArchivoHS
+
+    creaFileHS:
+        mov ax, 3C00h; para crear archivo en modo esctiruta
+        xor cx, cx
+        inc cx; modo escritura
+        lea dx, archivoHS
+        int 21h
+
+    abreFileNuevoHS:
+        mov ax, 3D01h; escritura en archivo
+        lea dx, archivoHS
+        int 21h
+        conejo jc,final
+        mov handleHS, ax
+    escribeFileNuevoHS:
+        mov ax, 4000h
+        mov bx, handleHS
+        mov cx, 399; tamaño del buffer
+        lea dx, buffyHS
+        int 21h
+        conejo jc,final
+        cerrar_archivo handleHS
+        jmp pintaBufferHS
+
+    leeArchivoHS:
+        mov ax, 3F00h
+        mov bx, handleHS
+        mov cx, 399; tamaño del buffer
+        lea dx, buffyHS
+        int 21h
+
     ; ****************** Pinta Highscores a partir del buffer ******************
+    pintaBufferHS:
     mov ah, 00000111b; fondo negro, letra blanca
     lea bx, buffyHS
     mov si, 738; comienzo de área de highscore
@@ -252,7 +300,6 @@ pintaHS proc far
             inc si
             inc di
         loop loopLineaHS
-        inc di
         inc di; salta enter
         add si, 122; siguiente línea del área de highscore
         dec dx
@@ -262,13 +309,34 @@ pintaHS proc far
     finPintaHS:
     pop si
     pop di
+    pop dx
     pop cx
     pop bx
     pop ax
     ret
 pintaHS endP
 
+actualizaHS proc far
+    ret
+actualizaHS endP
 
+pausaJugador proc far
+    ; rutina para hacer una pausa de 100 x 1000 nops
+    push cx
+
+    mov cx, tiempoPJ1
+    pausaJ1:
+        push cx
+        mov cx, tiempoPJ2
+    pausaJ2:
+        nop
+    loop pausaJ2
+    pop cx
+    loop pausaJ1
+
+    pop cx
+    ret
+pausaJugador endP
 
 
 inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un mov entre dos segmentos
@@ -369,10 +437,6 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                 mov ah, 00000111b
                 call print
                 call pintaHS
-
-
-
-
 
 
 
