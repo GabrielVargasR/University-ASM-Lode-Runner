@@ -17,10 +17,12 @@ datos segment
     acercaDe10 db "  e: modo editor", 0
     acercaDe11 db "  h: modo acerca de", 0
 
-    archivoNivel db "original\orig146.txt", 0
+    archivoNivel db "original\orig001.txt", 0, '$'
+    contadorNivel dw 1
     tamArchivoNivel dw (?)
     handleNivel dw (?)
     buffyNivel db 450 dup (?)
+    ds_nivel db "Nivel", 0
 
 
     archivoHS db "hscores.txt", 0
@@ -48,7 +50,7 @@ datos segment
      db "19 ___ ___ 00000000", 0Ah
      db "20 ___ ___ 00000000"
 
-     tiempoPJ1 db 1000
+     tiempoPJ1 dw 1000
      tiempoPJ2 db 100
 
 
@@ -104,6 +106,63 @@ print proc far
     ret
 print endP
 
+siguienteNivel proc far
+    ; Rutina para cambiar al siguiente nivel disponible
+    push ax
+    push bx
+    push cx
+    push di
+
+    xor ah, ah
+    xor di, di
+    mov di, 13
+    lea bx, archivoNivel
+    mov ax, contadorNivel
+    mov cx, 10
+
+    cmp ax, 10
+    jl nsnUnDigito
+    cmp ax, 100
+    jl nsnDosDigitos
+
+    div cl
+    add ah, 30h
+    mov byte ptr [bx + 15], ah; último dígito queda en el ah
+    xor ah, ah
+    div cl
+    add al, 30h
+    mov byte ptr [bx + di], al
+    inc di
+    add ah, 30h
+    mov byte ptr [bx + di], ah
+    jmp finNsn
+
+    nsnUnDigito:
+        mov byte ptr [bx + di], '0'
+        inc di
+        mov byte ptr [bx + di], '0'
+        inc di
+        add al, 30h
+        mov byte ptr [bx + di], al
+        jmp finNsn
+    nsnDosDigitos:
+        mov byte ptr [bx + di], '0'
+        inc di
+        div cl
+        add al, 30h
+        mov byte ptr [bx + di], al
+        inc di
+        add ah, 30h
+        mov byte ptr [bx + di], ah
+
+    finNsn:
+    pop di
+    pop cx
+    pop bx
+    pop ax
+    ret
+siguienteNivel endP
+
 pintaNivel proc far
     ; rutina para abrir el archivo del nivel y desplegarlo en pantalla
     ; espera el nombre del archivo en la variable archivoNivel
@@ -115,6 +174,7 @@ pintaNivel proc far
     push si
 
     ; ************************** Abre archivo de nivel *************************
+    inicioPintaNivel:
     mov ah, 3Dh; para abrir con int 21h
     mov al, 0; para modo de lectura
     lea dx, archivoNivel
@@ -123,7 +183,11 @@ pintaNivel proc far
     mov handleNivel, ax; para guardar el handle
     jmp leeArchivoNivel
     errorAbrir:
-    jmp finPintaNivel
+    cmp ax, 2
+    conejo jne finPintaNivel
+    inc contadorNivel
+    call siguienteNivel
+    jmp inicioPintaNivel
 
     ; *************************** Lee archivo de nivel *************************
     leeArchivoNivel:
@@ -151,7 +215,26 @@ pintaNivel proc far
     mov bx, handleNivel
     int 21h
 
-    ; *************************** Pinta Nivel *************************
+    ; *************************** Pinta Rotulo Nivel ***************************
+    lea bx, ds_nivel
+    mov si, 676
+    mov ah, 00010111b
+    call print
+
+    mov si, 688
+    mov ah, 00010111b
+    lea bx, archivoNivel
+    mov al, byte ptr [bx+13]
+    mov word ptr es:[si], ax
+    inc si
+    inc si
+    mov al, byte ptr [bx+14]
+    mov word ptr es:[si], ax
+    inc si
+    inc si
+    mov al, byte ptr [bx+15]
+    mov word ptr es:[si], ax
+    ; *************************** Pinta Nivel **********************************
     mov si, 410; primera posición del cuadro de juego
     shl si, 1
     xor di, di
@@ -327,7 +410,7 @@ pausaJugador proc far
     mov cx, tiempoPJ1
     pausaJ1:
         push cx
-        mov cx, tiempoPJ2
+        mov cl, tiempoPJ2
     pausaJ2:
         nop
     loop pausaJ2
@@ -337,6 +420,8 @@ pausaJugador proc far
     pop cx
     ret
 pausaJugador endP
+
+
 
 
 inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un mov entre dos segmentos
@@ -426,7 +511,7 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                 lineaV azul,22,21,2,48; imprime 16 filas separadas por 23 columnas a partir de 6ta fila, columna 49
 
                 lea bx, ds_highscore
-                mov si, 136
+                mov si, 134
                 shl si, 1; para posición del título
                 mov ah, 00010111b; fondo azul, char blanco
                 call print
@@ -443,6 +528,12 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
         jmp final
 
         modo_editor:
+
+        call siguienteNivel
+        mov ah, 09h
+        lea dx, archivoNivel
+        int 21h
+
         jmp final
 
 
