@@ -58,41 +58,6 @@ lineaV Macro color,N1,N2,F,C
     loop linea
 endM
 
-
-getTamanoArchivo Macro handle,vart
-    xor cx, cx
-    xor dx, dx; para hacer desplazamiento de 0
-    mov ah, 42h
-    mov al, 02
-    mov bx, handle1
-    int 21h
-    mov tamarchivo1, ax; operación retorna tamaño en DX:AX
-
-    mov ax, 4200h
-    xor dx, dx
-    int 21h ; regresa el file pointer al principio
-endM
-
-
-leer_archivo Macro han,tam,dir
-    mov ax, 3F00h
-    mov bx, han
-    mov cx, tam
-    lea dx, dir
-    int 21h
-endM
-
-
-dump Macro handle,tam,buff
-    ; Escribe todo un registro a un archivo
-    mov ax, 4200h
-    mov cx, tam
-    mov bx, handle
-    lea dx, buff
-    int 21h
-endM
-
-
 cerrar_archivo Macro handle
     mov ax, 3E00h
     mov bx, handle
