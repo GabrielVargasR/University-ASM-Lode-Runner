@@ -63,3 +63,27 @@ cerrar_archivo Macro handle
     mov bx, handle
     int 21h
 endM
+
+numToText Macro varNum, varText
+    local sigueDiv
+    local noConv
+    cmp varNum, 0
+    je noConv
+
+    lea bx, varText
+    mov ax, varNum
+    xor dx, dx
+    mov cx, 10000
+    xor si, si
+
+    div cx
+    cmp ax, 0
+
+    ;jne
+    add ax, 30h
+    mov [bx+si], ax
+
+
+
+    noConv:
+endM

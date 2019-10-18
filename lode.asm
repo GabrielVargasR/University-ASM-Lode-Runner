@@ -61,6 +61,8 @@ datos segment
      vidasJugador db 5
      celdaVieja dw espacio
      direccionActual db 0
+     scorePartida dw 0
+     scoreText db '00000'
 
 
 datos ends
@@ -461,11 +463,18 @@ mueveJugador proc far
     mov si, posicionJugador
     mov di, si; se usa para la celda a moverse
 
+    cmp celdaVieja, enemigo
+    jne comparaDir
+
+
+    comparaDir:
     cmp al, 0
     jne isUp
     add di, 160
     cmp word ptr es:[di], espacio
     conejo je seCae
+    sub di, 160
+    jmp finMueveJugador
     isUp:
     cmp al, 1
     jne isIzq
@@ -496,6 +505,8 @@ mueveJugador proc far
     movIzq:
         dec di
         dec di
+        cmp word ptr es:[di], azul
+        conejo je noIzq
         mov bx, celdaVieja
         mov ax, word ptr es:[si]; guarda jugador en ax
         mov word ptr es:[si], bx; restaura celda vieja
@@ -516,7 +527,7 @@ mueveJugador proc far
         mov celdaVieja, bx; guarda contenidos de la celda a moverse
         mov word ptr es:[di], ax; mueve jugador a la nueva posición
         cmp word ptr es:[di+160], espacio
-        jne finMueveJugador
+        conejo jne finMueveJugador
         add di, 160
         jmp seVaACaer
     movDown:
@@ -536,7 +547,13 @@ mueveJugador proc far
     mov di, si; revierte cambios al di
     jmp finMueveJugador
     noIzq:
+    mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
+    mov di, si; revierte cambios al di
+    jmp finMueveJugador
     noDer:
+    mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
+    mov di, si; revierte cambios al di
+    jmp finMueveJugador
     noDown:
     mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
     mov di, si; revierte cambios al di
@@ -693,7 +710,9 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                     xor ah, ah
                     int 16h
                     cmp al, 27; para ver si es esc
-                    conejo je final
+                    jne esASCII
+                    mov ax, 09h
+                    jmp final
 
                 esASCII:
                     cmp al, 0; para ver si es una tecla de función extendida
