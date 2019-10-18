@@ -11,11 +11,12 @@ datos segment
     acercaDe4 db "- Movimiento con flechas", 0
     acercaDe5 db "- Z y X para hacer agujeros", 0
     acercaDe6 db "- P para pausa", 0
-    acercaDe7 db "Objetivo: conseguir todos los tesoros y subir al siguiente nivel", 0
-    acercaDe8 db "Opciones (18103129 #):", 0
-    acercaDe9 db "  j: modo juego", 0
-    acercaDe10 db "  e: modo editor", 0
-    acercaDe11 db "  h: modo acerca de", 0
+    acercaDe7 db "- S para pasar al siguiente nivel (invalida highscore)", 0
+    acercaDe8 db "Objetivo: conseguir todos los tesoros y subir al siguiente nivel", 0
+    acercaDe9 db "Opciones (18103129 #):", 0
+    acercaDe10 db "  j: modo juego", 0
+    acercaDe11 db "  e: modo editor", 0
+    acercaDe12 db "  h: modo acerca de", 0
 
     archivoNivel db "original\orig001.txt", 0, '$'
     contadorNivel dw 1
@@ -53,7 +54,7 @@ datos segment
      tiempoPJ1 dw 1000
      tiempoPJ2 db 100
 
-
+     posicionJugador dw ?
 
 
 datos ends
@@ -113,6 +114,11 @@ siguienteNivel proc far
     push cx
     push di
 
+    cmp contadorNivel, 150
+    jl normal
+    mov contadorNivel, 1
+
+    normal:
     xor ah, ah
     xor di, di
     mov di, 13
@@ -235,6 +241,7 @@ pintaNivel proc far
     mov al, byte ptr [bx+15]
     mov word ptr es:[si], ax
     ; *************************** Pinta Nivel **********************************
+    mov posicionJugador, 0; para determinar después si hay jugador o no
     mov si, 410; primera posición del cuadro de juego
     shl si, 1
     xor di, di
@@ -293,6 +300,7 @@ pintaNivel proc far
             jmp pintaChar
             pintaPersonaje:
             mov ax, personaje
+            mov posicionJugador, si; guarda posición inicial del jugador
 
             pintaChar:
             mov word ptr es:[si], ax
@@ -304,9 +312,14 @@ pintaNivel proc far
         inc di
         dec dx
         cmp dx, 0
-        jne loopNivel
+        conejo jne loopNivel
 
-
+        mov si, posicionJugador
+        cmp word ptr es:[si], personaje; si no son iguales, no hay jugador
+        je finPintaNivel
+        inc contadorNivel
+        call siguienteNivel
+        jmp inicioPintaNivel
 
 
     finPintaNivel:
@@ -472,11 +485,11 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
             call print
 
             lea bx, acercaDe7
-            mov si, 2098
+            mov si, 1938
             call print
 
             lea bx, acercaDe8
-            mov si, 2418
+            mov si, 2258
             call print
 
             lea bx, acercaDe9
@@ -489,6 +502,10 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
 
             lea bx, acercaDe11
             mov si, 2898
+            call print
+
+            lea bx, acercaDe12
+            mov si, 3058
             call print
 
             jmp final
@@ -525,6 +542,60 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
 
 
 
+            comienza_juego:
+                call pausaJugador
+                mov ah, 01
+                int 16h
+                jz comienza_juego
+
+                hayTecla:
+                    xor ah, ah
+                    int 16h
+                    cmp al, 27; para ver si es esc
+                    je final
+
+                esASCII:
+                    cmp al, 0; para ver si es una tecla de función extendida
+                    je esDir
+
+                    cmp al, 'z'
+                    je esZ
+                    cmp al, 'x'
+                    je esX
+                    cmp al, 'p'
+                    je esPe
+                    cmp al, 's'; para cambiar de nivel
+                    jne comienza_juego
+                    inc contadorNivel
+                    call siguienteNivel
+                    call pintaNivel
+                    jmp comienza_juego
+
+                    esZ:
+                    mov ah, 02h
+                    mov dx, 'a'
+                    int 21h
+                    jmp comienza_juego
+                    esX:
+                    esPe:
+
+                esDir:
+                    cmp ah, 72; flecha de arriba
+                    cmp ah, 75; flecha izquierda
+                    cmp ah, 77; flecha derecha
+                    cmp ah, 80; flecha de abajo
+
+
+
+                jmp comienza_juego
+
+
+
+                ; inc contadorNivel
+                ; call siguienteNivel
+                ; call pintaNivel
+
+
         jmp final
 
         modo_editor:
@@ -535,6 +606,7 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
         int 21h
 
         jmp final
+
 
 
 
