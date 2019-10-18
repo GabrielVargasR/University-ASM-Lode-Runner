@@ -23,7 +23,10 @@ datos segment
     tamArchivoNivel dw (?)
     handleNivel dw (?)
     buffyNivel db 450 dup (?)
+
+
     ds_nivel db "Nivel", 0
+    ds_vidas db "Men:", 0
 
 
     archivoHS db "hscores.txt", 0
@@ -51,10 +54,11 @@ datos segment
      db "19 ___ ___ 00000000", 0Ah
      db "20 ___ ___ 00000000"
 
-     tiempoPJ1 dw 2000
+     tiempoPJ1 dw 1500
      tiempoPJ2 db 100
 
      posicionJugador dw ?
+     vidasJugador db 5
      celdaVieja dw espacio
      direccionActual db 0
 
@@ -459,7 +463,9 @@ mueveJugador proc far
 
     cmp al, 0
     jne isUp
-    jmp finMueveJugador
+    add di, 160
+    cmp word ptr es:[di], espacio
+    conejo je seCae
     isUp:
     cmp al, 1
     jne isIzq
@@ -477,6 +483,15 @@ mueveJugador proc far
     jmp movDown
 
     movUp:
+        sub di, 160; celda de arriba
+        mov bx, celdaVieja
+        mov ax, word ptr es:[si]; guarda jugador en ax
+        cmp bx, escalera
+        conejo jne noUp
+        mov word ptr es:[si], bx; restaura celda vieja
+        mov bx, word ptr es:[di]
+        mov celdaVieja, bx; guarda contenidos de la celda a moverse
+        mov word ptr es:[di], ax; mueve jugador a la nueva posición
         jmp finMueveJugador
     movIzq:
         dec di
@@ -487,7 +502,10 @@ mueveJugador proc far
         mov bx, word ptr es:[di]
         mov celdaVieja, bx; guarda contenidos de la celda a moverse
         mov word ptr es:[di], ax; mueve jugador a la nueva posición
-        jmp finMueveJugador
+        cmp word ptr es:[di+160], espacio
+        conejo jne finMueveJugador
+        add di, 160
+        jmp seVaACaer
     movDer:
         inc di
         inc di
@@ -497,7 +515,10 @@ mueveJugador proc far
         mov bx, word ptr es:[di]
         mov celdaVieja, bx; guarda contenidos de la celda a moverse
         mov word ptr es:[di], ax; mueve jugador a la nueva posición
-        jmp finMueveJugador
+        cmp word ptr es:[di+160], espacio
+        jne finMueveJugador
+        add di, 160
+        jmp seVaACaer
     movDown:
         add di, 160; celda de abajo
         cmp word ptr es:[di], escalera
@@ -511,11 +532,31 @@ mueveJugador proc far
         jmp finMueveJugador
 
     noUp:
+    mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
+    mov di, si; revierte cambios al di
+    jmp finMueveJugador
     noIzq:
     noDer:
     noDown:
+    mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
+    mov di, si; revierte cambios al di
+    jmp finMueveJugador
+    seVaACaer:
     mov direccionActual, 0
-    mov di, si
+    sub di, 160
+    jmp finMueveJugador
+    seCae:
+    mov bx, celdaVieja
+    mov ax, word ptr es:[si]; guarda jugador en ax
+    mov word ptr es:[si], bx; restaura celda vieja
+    mov bx, word ptr es:[di]
+    mov celdaVieja, bx; guarda contenidos de la celda a moverse
+    mov word ptr es:[di], ax; mueve jugador a la nueva posición
+    add di, 160
+    cmp word ptr es:[di], espacio
+    je seVaACaer
+    sub di, 160
+    jmp finMueveJugador
 
     finMueveJugador:
     mov posicionJugador, di
@@ -609,6 +650,16 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                 xor si, si
                 lineaV azul,16,27,5,9; imprime 16 filas separadas por 26 columnas a partir de 6ta fila, 10ma columna
                 call pintaNivel
+                mov si, 3380
+                mov ah, 00010111b
+                lea bx, ds_vidas
+                call print
+                inc si
+                inc si
+                add vidasJugador, 30h
+                lea bx, vidasJugador
+                mov byte ptr ds:[bx+1], 0
+                call print
 
             pinta_highscore:
                 xor si, si
@@ -675,9 +726,6 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                     cmp ah, 72; flecha de arriba
                     jne cmpIzq
                     mov direccionActual, 1
-                    mov ah, 02h
-                    mov dx, '1'
-                    int 21h
                     jmp etCambiaDir
                     cmpIzq:
                     cmp ah, 75; flecha izquierda
