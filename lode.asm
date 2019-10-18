@@ -11,18 +11,22 @@ datos segment
     acercaDe4 db "- Movimiento con flechas", 0
     acercaDe5 db "- Z y X para hacer agujeros", 0
     acercaDe6 db "- P para pausa", 0
-    acercaDe7 db "Objetivo: conseguir todos los tesoros y subir al siguiente nivel", 0
-    acercaDe8 db "Opciones (18103129 #):", 0
-    acercaDe9 db "  j: modo juego", 0
-    acercaDe10 db "  e: modo editor", 0
-    acercaDe11 db "  h: modo acerca de", 0
+    acercaDe7 db "- S para pasar al siguiente nivel (invalida highscore)", 0
+    acercaDe8 db "Objetivo: conseguir todos los tesoros y subir al siguiente nivel", 0
+    acercaDe9 db "Opciones (18103129 #):", 0
+    acercaDe10 db "  j: modo juego", 0
+    acercaDe11 db "  e: modo editor", 0
+    acercaDe12 db "  h: modo acerca de", 0
 
     archivoNivel db "original\orig001.txt", 0, '$'
     contadorNivel dw 1
     tamArchivoNivel dw (?)
     handleNivel dw (?)
     buffyNivel db 450 dup (?)
+
+
     ds_nivel db "Nivel", 0
+    ds_vidas db "Men:", 0
 
 
     archivoHS db "hscores.txt", 0
@@ -50,10 +54,15 @@ datos segment
      db "19 ___ ___ 00000000", 0Ah
      db "20 ___ ___ 00000000"
 
-     tiempoPJ1 dw 1000
+     tiempoPJ1 dw 1500
      tiempoPJ2 db 100
 
-
+     posicionJugador dw ?
+     vidasJugador db 5
+     celdaVieja dw espacio
+     direccionActual db 0
+     scorePartida dw 0
+     scoreText db '00000'
 
 
 datos ends
@@ -113,6 +122,11 @@ siguienteNivel proc far
     push cx
     push di
 
+    cmp contadorNivel, 150
+    jl normal
+    mov contadorNivel, 1
+
+    normal:
     xor ah, ah
     xor di, di
     mov di, 13
@@ -235,6 +249,7 @@ pintaNivel proc far
     mov al, byte ptr [bx+15]
     mov word ptr es:[si], ax
     ; *************************** Pinta Nivel **********************************
+    mov posicionJugador, 0; para determinar después si hay jugador o no
     mov si, 410; primera posición del cuadro de juego
     shl si, 1
     xor di, di
@@ -293,6 +308,7 @@ pintaNivel proc far
             jmp pintaChar
             pintaPersonaje:
             mov ax, personaje
+            mov posicionJugador, si; guarda posición inicial del jugador
 
             pintaChar:
             mov word ptr es:[si], ax
@@ -304,9 +320,14 @@ pintaNivel proc far
         inc di
         dec dx
         cmp dx, 0
-        jne loopNivel
+        conejo jne loopNivel
 
-
+        mov si, posicionJugador
+        cmp word ptr es:[si], personaje; si no son iguales, no hay jugador
+        je finPintaNivel
+        inc contadorNivel
+        call siguienteNivel
+        jmp inicioPintaNivel
 
 
     finPintaNivel:
@@ -421,6 +442,145 @@ pausaJugador proc far
     ret
 pausaJugador endP
 
+puedeMover proc far
+    ; Rutina para ver si el personaje puede moverse según la tecla indicada
+    ; Recibe coordenada adyacente en el di
+    ; Prende la cf si se puede mover
+    ret
+puedeMover endP
+
+mueveJugador proc far
+    ; Rutina para mover al jugador
+    push ax
+    push si
+
+    ;calcular paredes (puede ser con contenido de celda en vez de coordenadas)
+    ;calcular dirección del siguiente espacio
+    ;validar el siguiente espacio
+
+
+    mov al, direccionActual
+    mov si, posicionJugador
+    mov di, si; se usa para la celda a moverse
+
+    cmp celdaVieja, enemigo
+    jne comparaDir
+
+
+    comparaDir:
+    cmp al, 0
+    jne isUp
+    add di, 160
+    cmp word ptr es:[di], espacio
+    conejo je seCae
+    sub di, 160
+    jmp finMueveJugador
+    isUp:
+    cmp al, 1
+    jne isIzq
+    jmp movUp
+    isIzq:
+    cmp al, 2
+    jne isDer
+    jmp movIzq
+    isDer:
+    cmp al, 3
+    jne isDown
+    jmp movDer
+    isDown:
+    cmp al, 4
+    jmp movDown
+
+    movUp:
+        sub di, 160; celda de arriba
+        mov bx, celdaVieja
+        mov ax, word ptr es:[si]; guarda jugador en ax
+        cmp bx, escalera
+        conejo jne noUp
+        mov word ptr es:[si], bx; restaura celda vieja
+        mov bx, word ptr es:[di]
+        mov celdaVieja, bx; guarda contenidos de la celda a moverse
+        mov word ptr es:[di], ax; mueve jugador a la nueva posición
+        jmp finMueveJugador
+    movIzq:
+        dec di
+        dec di
+        cmp word ptr es:[di], azul
+        conejo je noIzq
+        mov bx, celdaVieja
+        mov ax, word ptr es:[si]; guarda jugador en ax
+        mov word ptr es:[si], bx; restaura celda vieja
+        mov bx, word ptr es:[di]
+        mov celdaVieja, bx; guarda contenidos de la celda a moverse
+        mov word ptr es:[di], ax; mueve jugador a la nueva posición
+        cmp word ptr es:[di+160], espacio
+        conejo jne finMueveJugador
+        add di, 160
+        jmp seVaACaer
+    movDer:
+        inc di
+        inc di
+        mov bx, celdaVieja
+        mov ax, word ptr es:[si]; guarda jugador en ax
+        mov word ptr es:[si], bx; restaura celda vieja
+        mov bx, word ptr es:[di]
+        mov celdaVieja, bx; guarda contenidos de la celda a moverse
+        mov word ptr es:[di], ax; mueve jugador a la nueva posición
+        cmp word ptr es:[di+160], espacio
+        conejo jne finMueveJugador
+        add di, 160
+        jmp seVaACaer
+    movDown:
+        add di, 160; celda de abajo
+        cmp word ptr es:[di], escalera
+        jne noDown
+        mov bx, celdaVieja
+        mov ax, word ptr es:[si]; guarda jugador en ax
+        mov word ptr es:[si], bx; restaura celda vieja
+        mov bx, word ptr es:[di]
+        mov celdaVieja, bx; guarda contenidos de la celda a moverse
+        mov word ptr es:[di], ax; mueve jugador a la nueva posición
+        jmp finMueveJugador
+
+    noUp:
+    mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
+    mov di, si; revierte cambios al di
+    jmp finMueveJugador
+    noIzq:
+    mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
+    mov di, si; revierte cambios al di
+    jmp finMueveJugador
+    noDer:
+    mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
+    mov di, si; revierte cambios al di
+    jmp finMueveJugador
+    noDown:
+    mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
+    mov di, si; revierte cambios al di
+    jmp finMueveJugador
+    seVaACaer:
+    mov direccionActual, 0
+    sub di, 160
+    jmp finMueveJugador
+    seCae:
+    mov bx, celdaVieja
+    mov ax, word ptr es:[si]; guarda jugador en ax
+    mov word ptr es:[si], bx; restaura celda vieja
+    mov bx, word ptr es:[di]
+    mov celdaVieja, bx; guarda contenidos de la celda a moverse
+    mov word ptr es:[di], ax; mueve jugador a la nueva posición
+    add di, 160
+    cmp word ptr es:[di], espacio
+    je seVaACaer
+    sub di, 160
+    jmp finMueveJugador
+
+    finMueveJugador:
+    mov posicionJugador, di
+    pop si
+    pop ax
+    ret
+mueveJugador endP
 
 
 
@@ -472,11 +632,11 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
             call print
 
             lea bx, acercaDe7
-            mov si, 2098
+            mov si, 1938
             call print
 
             lea bx, acercaDe8
-            mov si, 2418
+            mov si, 2258
             call print
 
             lea bx, acercaDe9
@@ -491,6 +651,10 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
             mov si, 2898
             call print
 
+            lea bx, acercaDe12
+            mov si, 3058
+            call print
+
             jmp final
 
         modo_juego:
@@ -503,6 +667,16 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                 xor si, si
                 lineaV azul,16,27,5,9; imprime 16 filas separadas por 26 columnas a partir de 6ta fila, 10ma columna
                 call pintaNivel
+                mov si, 3380
+                mov ah, 00010111b
+                lea bx, ds_vidas
+                call print
+                inc si
+                inc si
+                add vidasJugador, 30h
+                lea bx, vidasJugador
+                mov byte ptr ds:[bx+1], 0
+                call print
 
             pinta_highscore:
                 xor si, si
@@ -525,16 +699,82 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
 
 
 
-        jmp final
+            comienza_juego:
+                call mueveJugador
+                call pausaJugador
+                mov ah, 01
+                int 16h
+                jz comienza_juego
+
+                hayTecla:
+                    xor ah, ah
+                    int 16h
+                    cmp al, 27; para ver si es esc
+                    jne esASCII
+                    mov ax, 09h
+                    jmp final
+
+                esASCII:
+                    cmp al, 0; para ver si es una tecla de función extendida
+                    jz esDir
+
+                    cmp al, 'z'
+                    je esZ
+                    cmp al, 'x'
+                    je esX
+                    cmp al, 'p'
+                    je esPe
+                    cmp al, 's'; para cambiar de nivel
+                    jne comienza_juego
+                    inc contadorNivel
+                    call siguienteNivel
+                    call pintaNivel
+                    jmp comienza_juego
+
+                    esZ:
+                    mov ah, 02h
+                    mov dx, 'a'
+                    int 21h
+                    jmp comienza_juego
+                    esX:
+                    jmp comienza_juego
+                    esPe:
+                    jmp comienza_juego
+
+                esDir:
+                    cmp ah, 72; flecha de arriba
+                    jne cmpIzq
+                    mov direccionActual, 1
+                    jmp etCambiaDir
+                    cmpIzq:
+                    cmp ah, 75; flecha izquierda
+                    jne cmpDer
+                    mov direccionActual, 2
+                    jmp etCambiaDir
+                    cmpDer:
+                    cmp ah, 77; flecha derecha
+                    jne cmpUp
+                    mov direccionActual, 3
+                    jmp etCambiaDir
+                    cmpUp:
+                    cmp ah, 80; flecha de abajo
+                    jne comienza_juego
+                    mov direccionActual, 4
+                    etCambiaDir:
+                    jmp comienza_juego
 
         modo_editor:
-
-        call siguienteNivel
-        mov ah, 09h
-        lea dx, archivoNivel
-        int 21h
+        mov ax, 0B800h; comienzo de memoria gráfica
+        pinta_cuadro:
+            mov es, ax
+            xor si, si
+            mov al, '*'
+            lineaH azul,28,16,4,9; imprime dos filas horizontales de 28 caracteres separadas por 16 filas a partir de 5ta fila, 10ma columna
+            xor si, si
+            lineaV azul,16,27,5,9; imprime 16 filas separadas por 26 columnas a partir de 6ta fila, 10ma columna
 
         jmp final
+
 
 
 
