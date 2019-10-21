@@ -27,6 +27,7 @@ datos segment
 
     ds_nivel db "Nivel", 0
     ds_vidas db "Men:", 0
+    ds_GameOver db "Game Over$"
 
 
     archivoHS db "hscores.txt", 0
@@ -57,6 +58,7 @@ datos segment
      tiempoPJ1 dw 1500
      tiempoPJ2 db 100
 
+     posicionInicial dw ?
      posicionJugador dw ?
      vidasJugador db 5
      celdaVieja dw espacio
@@ -115,12 +117,134 @@ print proc far
     ret
 print endP
 
+pintaHS proc far
+    ; rutina para imprimir el highscore
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+    push si
+
+    ; ********************* Maneja Archivo de Highscores ***********************
+    mov ah, 3Dh; para abrir con int 21h
+    mov al, 0; para modo de lectura
+    lea dx, archivoHS
+    int 21h
+    jc creaFileHS
+    mov handleHS, ax; para guardar el handle
+    jmp leeArchivoHS
+
+    creaFileHS:
+        mov ax, 3C00h; para crear archivo en modo esctiruta
+        xor cx, cx
+        inc cx; modo escritura
+        lea dx, archivoHS
+        int 21h
+
+    abreFileNuevoHS:
+        mov ax, 3D01h; escritura en archivo
+        lea dx, archivoHS
+        int 21h
+        conejo jc,final
+        mov handleHS, ax
+    escribeFileNuevoHS:
+        mov ax, 4000h
+        mov bx, handleHS
+        mov cx, 399; tamaño del buffer
+        lea dx, buffyHS
+        int 21h
+        conejo jc,final
+        cerrar_archivo handleHS
+        jmp pintaBufferHS
+
+    leeArchivoHS:
+        mov ax, 3F00h
+        mov bx, handleHS
+        mov cx, 399; tamaño del buffer
+        lea dx, buffyHS
+        int 21h
+
+    ; ****************** Pinta Highscores a partir del buffer ******************
+    pintaBufferHS:
+    mov ah, 00000111b; fondo negro, letra blanca
+    lea bx, buffyHS
+    mov si, 738; comienzo de área de highscore
+    xor di, di
+
+    mov dx, 20
+    loopHS:
+        mov cx, 19
+        loopLineaHS:
+            mov al, byte ptr [bx + di]
+            mov es:[si], ax
+            inc si
+            inc si
+            inc di
+        loop loopLineaHS
+        inc di; salta enter
+        add si, 122; siguiente línea del área de highscore
+        dec dx
+        cmp dx, 0
+    jne loopHS
+
+    finPintaHS:
+    pop si
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+pintaHS endP
+
+actualizaHS proc far
+    ret
+actualizaHS endP
+
+gameOver proc far
+    call actualizaHS
+    call pintaHS
+    mov ah, 09h
+    lea dx, ds_GameOver
+    int 21h
+    jmp final
+gameOver endP
+
+pintaVidas proc far
+    ; rutina para imprimir cantidad de vidas
+    push ax
+    push bx
+    push si
+
+    mov ah, 00010111b
+    mov si, 3390
+    add vidasJugador, 30h
+    lea bx, vidasJugador
+    mov byte ptr ds:[bx+1], 0
+    call print
+    sub vidasJugador, 30h
+
+    cmp vidasJugador, 0
+    jne finPintaVidas
+    call gameOver
+
+    finPintaVidas:
+    pop si
+    pop bx
+    pop ax
+    ret
+pintaVidas endP
+
 siguienteNivel proc far
     ; Rutina para cambiar al siguiente nivel disponible
     push ax
     push bx
     push cx
     push di
+
+    mov direccionActual, 0
+    mov celdaVieja, espacio
 
     cmp contadorNivel, 150
     jl normal
@@ -308,6 +432,7 @@ pintaNivel proc far
             jmp pintaChar
             pintaPersonaje:
             mov ax, personaje
+            mov posicionInicial, si; guarda posición inicial del jugador
             mov posicionJugador, si; guarda posición inicial del jugador
 
             pintaChar:
@@ -339,91 +464,6 @@ pintaNivel proc far
     ret
 pintaNivel endP
 
-pintaHS proc far
-    ; rutina para imprimir el highscore
-    push ax
-    push bx
-    push cx
-    push dx
-    push di
-    push si
-
-    ; ********************* Maneja Archivo de Highscores ***********************
-    mov ah, 3Dh; para abrir con int 21h
-    mov al, 0; para modo de lectura
-    lea dx, archivoHS
-    int 21h
-    jc creaFileHS
-    mov handleHS, ax; para guardar el handle
-    jmp leeArchivoHS
-
-    creaFileHS:
-        mov ax, 3C00h; para crear archivo en modo esctiruta
-        xor cx, cx
-        inc cx; modo escritura
-        lea dx, archivoHS
-        int 21h
-
-    abreFileNuevoHS:
-        mov ax, 3D01h; escritura en archivo
-        lea dx, archivoHS
-        int 21h
-        conejo jc,final
-        mov handleHS, ax
-    escribeFileNuevoHS:
-        mov ax, 4000h
-        mov bx, handleHS
-        mov cx, 399; tamaño del buffer
-        lea dx, buffyHS
-        int 21h
-        conejo jc,final
-        cerrar_archivo handleHS
-        jmp pintaBufferHS
-
-    leeArchivoHS:
-        mov ax, 3F00h
-        mov bx, handleHS
-        mov cx, 399; tamaño del buffer
-        lea dx, buffyHS
-        int 21h
-
-    ; ****************** Pinta Highscores a partir del buffer ******************
-    pintaBufferHS:
-    mov ah, 00000111b; fondo negro, letra blanca
-    lea bx, buffyHS
-    mov si, 738; comienzo de área de highscore
-    xor di, di
-
-    mov dx, 20
-    loopHS:
-        mov cx, 19
-        loopLineaHS:
-            mov al, byte ptr [bx + di]
-            mov es:[si], ax
-            inc si
-            inc si
-            inc di
-        loop loopLineaHS
-        inc di; salta enter
-        add si, 122; siguiente línea del área de highscore
-        dec dx
-        cmp dx, 0
-    jne loopHS
-
-    finPintaHS:
-    pop si
-    pop di
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret
-pintaHS endP
-
-actualizaHS proc far
-    ret
-actualizaHS endP
-
 pausaJugador proc far
     ; rutina para hacer una pausa de 100 x 1000 nops
     push cx
@@ -442,30 +482,19 @@ pausaJugador proc far
     ret
 pausaJugador endP
 
-puedeMover proc far
-    ; Rutina para ver si el personaje puede moverse según la tecla indicada
-    ; Recibe coordenada adyacente en el di
-    ; Prende la cf si se puede mover
-    ret
-puedeMover endP
-
 mueveJugador proc far
     ; Rutina para mover al jugador
     push ax
     push si
 
-    ;calcular paredes (puede ser con contenido de celda en vez de coordenadas)
-    ;calcular dirección del siguiente espacio
-    ;validar el siguiente espacio
-
-
     mov al, direccionActual
     mov si, posicionJugador
     mov di, si; se usa para la celda a moverse
 
-    cmp celdaVieja, enemigo
+    cmp celdaVieja, tesoro
     jne comparaDir
-
+    add scorePartida, puntosTesoro
+    mov celdaVieja, espacio
 
     comparaDir:
     cmp al, 0
@@ -493,6 +522,8 @@ mueveJugador proc far
 
     movUp:
         sub di, 160; celda de arriba
+        cmp word ptr es:[di], enemigo
+        conejo je muere
         mov bx, celdaVieja
         mov ax, word ptr es:[si]; guarda jugador en ax
         cmp bx, escalera
@@ -502,10 +533,13 @@ mueveJugador proc far
         mov celdaVieja, bx; guarda contenidos de la celda a moverse
         mov word ptr es:[di], ax; mueve jugador a la nueva posición
         jmp finMueveJugador
+
     movIzq:
         dec di
         dec di
-        cmp word ptr es:[di], azul
+        cmp word ptr es:[di], enemigo
+        conejo je muere
+        cmp word ptr es:[di], 0001000100101010b; delimitador de área de juego
         conejo je noIzq
         mov bx, celdaVieja
         mov ax, word ptr es:[si]; guarda jugador en ax
@@ -513,25 +547,41 @@ mueveJugador proc far
         mov bx, word ptr es:[di]
         mov celdaVieja, bx; guarda contenidos de la celda a moverse
         mov word ptr es:[di], ax; mueve jugador a la nueva posición
+        cmp word ptr es:[di-2], cuerda; para ver si viene de una cuerda
+        conejo je finMueveJugador
+        cmp word ptr es:[di+2], cuerda; para ver si va a una cuerda
+        conejo je finMueveJugador
         cmp word ptr es:[di+160], espacio
         conejo jne finMueveJugador
         add di, 160
         jmp seVaACaer
+
     movDer:
         inc di
         inc di
+        cmp word ptr es:[di], enemigo
+        conejo je muere
+        cmp word ptr es:[di], 0001000100101010b; delimitador de área de juego
+        conejo je noIzq
         mov bx, celdaVieja
         mov ax, word ptr es:[si]; guarda jugador en ax
         mov word ptr es:[si], bx; restaura celda vieja
         mov bx, word ptr es:[di]
         mov celdaVieja, bx; guarda contenidos de la celda a moverse
         mov word ptr es:[di], ax; mueve jugador a la nueva posición
+        cmp word ptr es:[di-2], cuerda; para ver si viene de una cuerda
+        conejo je finMueveJugador
+        cmp word ptr es:[di+2], cuerda; para ver si va a una cuerda
+        conejo je finMueveJugador
         cmp word ptr es:[di+160], espacio
         conejo jne finMueveJugador
         add di, 160
         jmp seVaACaer
+
     movDown:
         add di, 160; celda de abajo
+        cmp word ptr es:[di], enemigo
+        conejo je muere
         cmp word ptr es:[di], escalera
         jne noDown
         mov bx, celdaVieja
@@ -542,41 +592,58 @@ mueveJugador proc far
         mov word ptr es:[di], ax; mueve jugador a la nueva posición
         jmp finMueveJugador
 
+
     noUp:
-    mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
-    mov di, si; revierte cambios al di
-    jmp finMueveJugador
+        mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
+        mov di, si; revierte cambios al di
+        jmp finMueveJugador
     noIzq:
-    mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
-    mov di, si; revierte cambios al di
-    jmp finMueveJugador
+        mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
+        mov di, si; revierte cambios al di
+        jmp finMueveJugador
     noDer:
-    mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
-    mov di, si; revierte cambios al di
-    jmp finMueveJugador
+        mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
+        mov di, si; revierte cambios al di
+        jmp finMueveJugador
     noDown:
-    mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
-    mov di, si; revierte cambios al di
-    jmp finMueveJugador
+        mov direccionActual, 0; no se puede mover hasta que se digite tecla válida
+        mov di, si; revierte cambios al di
+        jmp finMueveJugador
     seVaACaer:
-    mov direccionActual, 0
-    sub di, 160
-    jmp finMueveJugador
+        mov direccionActual, 0
+        sub di, 160
+        jmp finMueveJugador
     seCae:
-    mov bx, celdaVieja
-    mov ax, word ptr es:[si]; guarda jugador en ax
-    mov word ptr es:[si], bx; restaura celda vieja
-    mov bx, word ptr es:[di]
-    mov celdaVieja, bx; guarda contenidos de la celda a moverse
-    mov word ptr es:[di], ax; mueve jugador a la nueva posición
-    add di, 160
-    cmp word ptr es:[di], espacio
-    je seVaACaer
-    sub di, 160
+        cmp word ptr es:[di], enemigo
+        conejo je muere
+        mov bx, celdaVieja
+        mov ax, word ptr es:[si]; guarda jugador en ax
+        mov word ptr es:[si], bx; restaura celda vieja
+        mov bx, word ptr es:[di]
+        mov celdaVieja, bx; guarda contenidos de la celda a moverse
+        mov word ptr es:[di], ax; mueve jugador a la nueva posición
+        add di, 160
+        cmp word ptr es:[di], espacio
+        je seVaACaer
+        sub di, 160
+        jmp finMueveJugador
+    muere:
+        mov ax, word ptr es:[si]; mueve jugador al ax
+        mov bx, celdaVieja
+        mov word ptr es:[si], bx; restaura lo que había
+        mov si, posicionInicial
+        mov posicionJugador, si
+        mov word ptr es:[si], ax; regresa jugador a posición inicial
+        dec vidasJugador
+        call pintaVidas
+        mov direccionActual, 0
+        mov celdaVieja, espacio
+
     jmp finMueveJugador
 
+
     finMueveJugador:
-    mov posicionJugador, di
+    mov posicionJugador, di; guarda posición adónde se movió el jugador
     pop si
     pop ax
     ret
@@ -671,12 +738,8 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                 mov ah, 00010111b
                 lea bx, ds_vidas
                 call print
-                inc si
-                inc si
-                add vidasJugador, 30h
-                lea bx, vidasJugador
-                mov byte ptr ds:[bx+1], 0
-                call print
+                call pintaVidas
+
 
             pinta_highscore:
                 xor si, si
@@ -758,20 +821,20 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                     jmp etCambiaDir
                     cmpUp:
                     cmp ah, 80; flecha de abajo
-                    jne comienza_juego
+                    conejo jne comienza_juego
                     mov direccionActual, 4
                     etCambiaDir:
                     jmp comienza_juego
 
         modo_editor:
-        mov ax, 0B800h; comienzo de memoria gráfica
-        pinta_cuadro:
-            mov es, ax
-            xor si, si
-            mov al, '*'
-            lineaH azul,28,16,4,9; imprime dos filas horizontales de 28 caracteres separadas por 16 filas a partir de 5ta fila, 10ma columna
-            xor si, si
-            lineaV azul,16,27,5,9; imprime 16 filas separadas por 26 columnas a partir de 6ta fila, 10ma columna
+            mov ax, 0B800h; comienzo de memoria gráfica
+            pinta_cuadro:
+                mov es, ax
+                xor si, si
+                mov al, '*'
+                lineaH azul,28,16,4,9; imprime dos filas horizontales de 28 caracteres separadas por 16 filas a partir de 5ta fila, 10ma columna
+                xor si, si
+                lineaV azul,16,27,5,9; imprime 16 filas separadas por 26 columnas a partir de 6ta fila, 10ma columna
 
         jmp final
 
@@ -779,6 +842,7 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
 
 
 final:
+
         mov ax, 4C00h ; para finalizacion en 21h
         int 21h ; termina programa
 
