@@ -795,9 +795,6 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                     jmp comienza_juego
 
                     esZ:
-                    mov ah, 02h
-                    mov dx, 'a'
-                    int 21h
                     jmp comienza_juego
                     esX:
                     jmp comienza_juego
