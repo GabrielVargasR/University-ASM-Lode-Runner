@@ -27,7 +27,7 @@ datos segment
 
     ds_nivel db "Nivel", 0
     ds_vidas db "Men:", 0
-    ds_GameOver db "Game Over$"
+    ds_GameOver db "Game Over", 0Ah, 0Dh, "Thanks for the run$"
 
 
     archivoHS db "hscores.txt", 0
@@ -775,7 +775,12 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                     int 16h
                     cmp al, 27; para ver si es esc
                     jne esASCII
-                    mov ax, 09h
+                    mov ah, 06h
+                    mov al, 23
+                    int 10h; limpia la pantalla
+                    mov ah, 09h
+                    lea dx, ds_GameOver
+                    int 21h; imprime mensaje final
                     jmp final
 
                 esASCII:
