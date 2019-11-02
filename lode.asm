@@ -243,10 +243,10 @@ siguienteNivel proc far
     push cx
     push di
 
-    mov direccionActual, 0
-    mov celdaVieja, espacio
+    mov direccionActual, 0; para frenar el juego si está en proceso
+    mov celdaVieja, espacio; para no traer basura del nivel anterior
 
-    cmp contadorNivel, 150
+    cmp contadorNivel, 150; para hacer cíclico el proceso
     jl normal
     mov contadorNivel, 1
 
@@ -263,11 +263,11 @@ siguienteNivel proc far
     cmp ax, 100
     jl nsnDosDigitos
 
-    div cl
-    add ah, 30h
+    div cl; contadorNivel / 10
+    add ah, 30h; para ascii
     mov byte ptr [bx + 15], ah; último dígito queda en el ah
-    xor ah, ah
-    div cl
+    xor ah, ah; queda solo al en el ax
+    div cl; cociente de contadorNivel / 10
     add al, 30h
     mov byte ptr [bx + di], al
     inc di
@@ -321,9 +321,9 @@ pintaNivel proc far
     mov handleNivel, ax; para guardar el handle
     jmp leeArchivoNivel
     errorAbrir:
-    cmp ax, 2
-    conejo jne finPintaNivel
-    inc contadorNivel
+    cmp ax, 2; no encontró nombre de archivo
+    conejo jne finPintaNivel; error fatal
+    inc contadorNivel; para llevar conteo
     call siguienteNivel
     jmp inicioPintaNivel
 
@@ -357,7 +357,7 @@ pintaNivel proc far
     lea bx, ds_nivel
     mov si, 676
     mov ah, 00010111b
-    call print
+    call print; imprime rótulo nivel
 
     mov si, 688
     mov ah, 00010111b
@@ -371,16 +371,17 @@ pintaNivel proc far
     inc si
     inc si
     mov al, byte ptr [bx+15]
-    mov word ptr es:[si], ax
+    mov word ptr es:[si], ax; imprime número de nivel
+
     ; *************************** Pinta Nivel **********************************
     mov posicionJugador, 0; para determinar después si hay jugador o no
     mov si, 410; primera posición del cuadro de juego
     shl si, 1
     xor di, di
     lea bx, buffyNivel
-    mov dx, 16
+    mov dx, 16; 16 fila por columna
     loopNivel:
-        mov cx, 26
+        mov cx, 26; 26 columnas
         loopLinea:
             cmp byte ptr [bx+di], ' '
             je pintaNada
@@ -449,9 +450,9 @@ pintaNivel proc far
 
         mov si, posicionJugador
         cmp word ptr es:[si], personaje; si no son iguales, no hay jugador
-        je finPintaNivel
+        je finPintaNivel; si no encuentra personaje, no se puede jugar
         inc contadorNivel
-        call siguienteNivel
+        call siguienteNivel; prepara variable
         jmp inicioPintaNivel
 
 
@@ -497,12 +498,12 @@ mueveJugador proc far
     mov celdaVieja, espacio
 
     comparaDir:
-    cmp al, 0
+    cmp al, 0; puede ser que esté quieto o se esté cayendo
     jne isUp
-    add di, 160
+    add di, 160; abajo del jugador
     cmp word ptr es:[di], espacio
     conejo je seCae
-    sub di, 160
+    sub di, 160; restaura di
     jmp finMueveJugador
     isUp:
     cmp al, 1
@@ -551,7 +552,7 @@ mueveJugador proc far
         conejo je finMueveJugador
         cmp word ptr es:[di+2], cuerda; para ver si va a una cuerda
         conejo je finMueveJugador
-        cmp word ptr es:[di+160], espacio
+        cmp word ptr es:[di+160], espacio; abajo es espacio?
         conejo jne finMueveJugador
         add di, 160
         jmp seVaACaer
@@ -756,9 +757,9 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                 lea bx, ds_highscore2
                 mov si, 212
                 shl si, 1
-                mov ah, 00000111b
-                call print
-                call pintaHS
+                mov ah, 00000111b; fondo negro, char blanco
+                call print; imprime rotulos
+                call pintaHS; imprime high score
 
 
 
@@ -767,7 +768,7 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                 call pausaJugador
                 mov ah, 01
                 int 16h
-                jz comienza_juego
+                jz comienza_juego; no hay tecla ingresada
 
                 hayTecla:
                     xor ah, ah
@@ -833,10 +834,7 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                 xor si, si
                 lineaV azul,16,27,5,9; imprime 16 filas separadas por 26 columnas a partir de 6ta fila, 10ma columna
 
-        jmp final
-
-
-
+                jmp final
 
 final:
 
