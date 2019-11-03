@@ -27,7 +27,7 @@ datos segment
 
     ds_nivel db "Nivel", 0
     ds_vidas db "Men:", 0
-    ds_GameOver db "Game Over", 0Ah, 0Dh, "Thanks for the run$"
+    ds_GameOver db "Game Over", 0Ah, 0Dh, "Thanks for the run$", 0
 
 
     archivoHS db "hscores.txt", 0
@@ -65,6 +65,15 @@ datos segment
      direccionActual db 0
      scorePartida dw 0
      scoreText db '00000'
+
+     modoVideo dw ?
+
+     archivoNivelNuevo db "nuevos\nuevo001.txt", 0
+     contadorNivelNuevo dw 1
+     contadorLinea dw 0
+     handleNivelNuevo dw (?)
+     buffyNivelNuevo db 432 dup (?)
+
 
 
 datos ends
@@ -300,6 +309,69 @@ siguienteNivel proc far
     pop ax
     ret
 siguienteNivel endP
+
+siguienteNivelOriginal proc
+    ; Rutina para cambiar al siguiente nivel original no creado
+    push ax
+    push bx
+    push cx
+    push di
+
+    cmp contadorNivelNuevo, 150; para hacer cíclico el proceso
+    jl normalOg
+    mov contadorNivelNuevo, 1
+
+    normalOg:
+    xor ah, ah
+    xor di, di
+    mov di, 12
+    lea bx, archivoNivelNuevo
+    mov ax, contadorNivelNuevo
+    mov cx, 10
+
+    cmp ax, 10
+    jl nsnUnDigitoOg
+    cmp ax, 100
+    jl nsnDosDigitosOg
+
+    div cl; contadorNivel / 10
+    add ah, 30h; para ascii
+    mov byte ptr [bx + 14], ah; último dígito queda en el ah
+    xor ah, ah; queda solo al en el ax
+    div cl; cociente de contadorNivel / 10
+    add al, 30h
+    mov byte ptr [bx + di], al
+    inc di
+    add ah, 30h
+    mov byte ptr [bx + di], ah
+    jmp finNsnOg
+
+    nsnUnDigitoOg:
+        mov byte ptr [bx + di], '0'
+        inc di
+        mov byte ptr [bx + di], '0'
+        inc di
+        add al, 30h
+        mov byte ptr [bx + di], al
+        jmp finNsnOg
+    nsnDosDigitosOg:
+        mov byte ptr [bx + di], '0'
+        inc di
+        div cl
+        add al, 30h
+        mov byte ptr [bx + di], al
+        inc di
+        add ah, 30h
+        mov byte ptr [bx + di], ah
+
+    finNsnOg:
+    inc contadorNivelNuevo
+    pop di
+    pop cx
+    pop bx
+    pop ax
+    ret
+siguienteNivelOriginal endP
 
 pintaNivel proc far
     ; rutina para abrir el archivo del nivel y desplegarlo en pantalla
@@ -650,7 +722,78 @@ mueveJugador proc far
     ret
 mueveJugador endP
 
+nuevaLinea proc
+    ; rutina que se encarga de insertar un "enter" en el buffer de editor cuando es necesario
+    push ax
 
+    mov ax, contadorLinea
+    cmp ax, 26; si ya hay 26 caracteres, se terminó la línea y hay que insertar un cambio de línea para el archivo
+    jne finNuevaLinea
+    mov byte ptr [buffyNivelNuevo+si], 0Ah; mete cambio de línea
+    inc si; apunta a siguiente char del buffer
+    mov contadorLinea, 0; reinicia el comtador
+
+    finNuevaLinea:
+    pop ax
+    ret
+nuevaLinea endP
+
+escribeTeclaEditor proc far
+    ; rutina que escribe tecla digitada (al) en el buffer para guardar el archivo
+
+    mov byte ptr [buffyNivelNuevo+si], al; la tecla está en el al
+    inc si; apunta a la siguiente posición del buffer
+    inc contadorLinea
+    call nuevaLinea
+
+    ret
+escribeTeclaEditor endP
+
+escribeNivelNuevo proc far
+    ; rutina que toma el buffer y lo guarda en un nuevo archivo en formato para juego
+    push ax
+    push cx
+    push dx
+
+    intentaAbrir:
+        mov ah, 3Dh; para abrir con int 21h
+        mov al, 0; para modo de lectura
+        lea dx, archivoNivelNuevo
+        int 21h; intenta abrir archivo
+        jc creaNivelNuevo
+        call siguienteNivelOriginal
+        jmp intentaAbrir
+
+    creaNivelNuevo:
+        cmp ax, 2
+        conejo jne,final
+        mov ax, 3C00h; para crear archivo en modo esctiruta
+        xor cx, cx
+        inc cx; modo escritura
+        lea dx, archivoNivelNuevo
+        int 21h
+
+    abreFileNuevo:
+        mov ax, 3D01h; escritura en archivo
+        lea dx, archivoNivelNuevo
+        int 21h
+        conejo jc,final
+        mov handleNivelNuevo, ax
+
+    escribeArchivoNivelNuevo:
+        mov ax, 4000h
+        mov bx, handleNivelNuevo
+        mov cx, 431; tamaño del buffer
+        lea dx, buffyNivelNuevo
+        int 21h
+        conejo jc,final
+        cerrar_archivo handleNivelNuevo
+
+    pop dx
+    pop cx
+    pop ax
+    ret
+escribeNivelNuevo endP
 
 inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un mov entre dos segmentos
         mov es, ax ; para no perder la direccion del psp
@@ -830,19 +973,133 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                     jmp comienza_juego
 
         modo_editor:
-            mov ax, 0B800h; comienzo de memoria gráfica
-            pinta_cuadro:
-                mov es, ax
-                xor si, si
-                mov al, '*'
-                lineaH azul,28,16,4,9; imprime dos filas horizontales de 28 caracteres separadas por 16 filas a partir de 5ta fila, 10ma columna
-                xor si, si
-                lineaV azul,16,27,5,9; imprime 16 filas separadas por 26 columnas a partir de 6ta fila, 10ma columna
+            mov ah, 0Fh
+            int 10h; deja en ax el modo de video original
+            mov modoVideo, ax; conserva modo de video original
 
-                jmp final
+            xor ah, ah; modo 00 de la 10h
+            mov al, 12h; 640 x 480 a 16 colores
+            int 10h; establece modo de video
+
+
+            mov ax, 0A000h; comienzo de memoria gráfica para modo video
+            mov es, ax
+
+            ; Pinta cuadro editor
+            ; Cursor parpadeando
+
+                xor si, si
+                comienza_editor:
+                    mov ah, 01
+                    int 16h; para ver si hay una tecla registrada en el buffer de teclado
+                    jz comienza_editor; no hay tecla ingresada
+
+                    hayTeclaEditor:
+                        xor ah, ah
+                        int 16h
+                        cmp al, 27; para ver si es esc
+                        jne editorGuardarNivel
+                        finEditor:
+                        mov ax, modoVideo; saca modo de video original
+                        xor ah, ah
+                        int 10h; restaura modo de video original
+                        jmp final
+
+                    editorGuardarNivel:
+                        cmp al, 0Dh; para ver si es un enter
+                        jne editorEsASCII
+                        call escribeNivelNuevo
+                        jmp finEditor
+
+                    editorEsASCII:
+                        cmp al, 0; para ver si es una tecla de función extendida
+                        jz editorEsDir
+
+                        cmp al, ' '
+                        je editorEsSpc
+                        cmp al, 'l'
+                        je editorEsL
+                        cmp al, 'c'
+                        je editorEsC
+                        cmp al, 'e'
+                        je editorEsE
+                        cmp al, 'f'
+                        je editorEsF
+                        cmp al, 's'
+                        je editorEsS
+                        cmp al, 'o'
+                        je editorEsO
+                        cmp al, 'g'
+                        je editorEsG
+                        cmp al, 'x'
+                        je editorEsX
+                        cmp al, '*'
+                        jne editorEsSpc
+                        ; despliega personaje
+                        jmp editorSiguienteTecla
+
+
+                        editorEsSpc:
+                        jmp editorSiguienteTecla
+                        editorEsL:
+                        jmp editorSiguienteTecla
+                        editorEsC:
+                        jmp editorSiguienteTecla
+                        editorEsE:
+                        jmp editorSiguienteTecla
+                        editorEsF:
+                        jmp editorSiguienteTecla
+                        editorEsS:
+                        jmp editorSiguienteTecla
+                        editorEsO:
+                        jmp editorSiguienteTecla
+                        editorEsG:
+                        jmp editorSiguienteTecla
+                        editorEsX:
+                        jmp editorSiguienteTecla
+
+
+                        editorSiguienteTecla:
+                        ; desplegar caracter correspondiente
+                        call escribeTeclaEditor; rutina que guarda la tecla indicada en el buffer para el nivel nuevo
+                        ; inc contador pantalla
+                        jmp comienza_editor
+
+
+                    editorEsDir:
+                        push si
+                        cmp ah, 72; flecha de arriba
+                        jne cmpIzqEd
+                        sub si, 17
+                        jmp edCambiaDir
+                        cmpIzqEd:
+                        cmp ah, 75; flecha izquierda
+                        jne cmpDerEd
+                        dec si
+                        jmp edCambiaDir
+                        cmpDerEd:
+                        cmp ah, 77; flecha derecha
+                        jne cmpDownEd
+                        inc si
+                        jmp edCambiaDir
+                        cmpDownEd:
+                        cmp ah, 80; flecha de abajo
+                        conejo jne comienza_editor
+                        add si, 17
+
+                        edCambiaDir:
+                        cmp si, 0
+                        jl noMueve
+                        cmp si, 432
+                        jge noMueve
+
+
+
+                        noMueve:
+                        pop si
+                        jmp comienza_editor
 
 final:
-
         mov ax, 4C00h ; para finalizacion en 21h
         int 21h ; termina programa
 
