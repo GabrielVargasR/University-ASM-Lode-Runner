@@ -987,6 +987,7 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
 
             ; Pinta cuadro editor
             ; Cursor parpadeando
+
                 xor si, si
                 comienza_editor:
                     mov ah, 01
@@ -1037,6 +1038,7 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                         ; despliega personaje
                         jmp editorSiguienteTecla
 
+
                         editorEsSpc:
                         jmp editorSiguienteTecla
                         editorEsL:
@@ -1058,6 +1060,7 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
 
 
                         editorSiguienteTecla:
+                        ; desplegar caracter correspondiente
                         call escribeTeclaEditor; rutina que guarda la tecla indicada en el buffer para el nivel nuevo
                         ; inc contador pantalla
                         jmp comienza_editor
@@ -1090,7 +1093,7 @@ inicio: mov ax, ds ; se mueve primero a un registro porque no se puede hacer un 
                         cmp si, 432
                         jge noMueve
 
-                        
+
 
                         noMueve:
                         pop si
