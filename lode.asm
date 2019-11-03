@@ -27,7 +27,7 @@ datos segment
 
     ds_nivel db "Nivel", 0
     ds_vidas db "Men:", 0
-    ds_GameOver db "Game Over", 0Ah, 0Dh, "Thanks for the run$"
+    ds_GameOver db "Game Over", 0Ah, 0Dh, "Thanks for the run$", 0
 
 
     archivoHS db "hscores.txt", 0
